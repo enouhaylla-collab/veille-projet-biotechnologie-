@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veille Biotech Bleue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #EEF5FB;
+    --surface: #FFFFFF;
+    --mist: #DCEBF7;
+    --sky: #A9CDEB;
+    --lagoon: #6FA6D6;
+    --ink: #1D3A5C;
+    --muted: #5F7C9B;
+    --shadow: 0 1px 2px rgba(29, 58, 92, .06), 0 8px 24px -12px rgba(29, 58, 92, .18);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1A28;
+      --surface: #15263A;
+      --mist: #1D3350;
+      --sky: #35587E;
+      --lagoon: #8DBCE6;
+      --ink: #E3EEF8;
+      --muted: #97B0CA;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1A28;
+    --surface: #15263A;
+    --mist: #1D3350;
+    --sky: #35587E;
+    --lagoon: #8DBCE6;
+    --ink: #E3EEF8;
+    --muted: #97B0CA;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 500px at 85% -10%, var(--mist), transparent 70%),
+      var(--ground);
+    color: var(--ink);
+    font: 400 15px/1.5 "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 0 16px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding-block: 56px 72px; }
+
+  header { display: grid; gap: 14px; margin-bottom: 36px; }
+  .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--lagoon);
+  }
+  h1 {
+    margin: 0;
+    font: 400 clamp(40px, 6vw, 68px)/1.02 "Instrument Serif", Georgia, serif;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  h1 em { color: var(--lagoon); }
+  .lede { margin: 0; max-width: 60ch; color: var(--muted); font-size: 16px; }
+
+  .tools {
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+    margin-top: 8px;
+  }
+  .tools input, .tools select {
+    font: inherit; color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--mist);
+    border-radius: 999px;
+    padding: 9px 16px;
+    outline: none;
+  }
+  .tools input { flex: 1 1 260px; max-width: 380px; }
+  .tools input:focus-visible, .tools select:focus-visible { border-color: var(--lagoon); box-shadow: 0 0 0 3px var(--mist); }
+  .count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; margin-left: auto; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 28px 22px;
+  }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+
+  .card { display: grid; gap: 12px; align-content: start; }
+  .player {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    max-width: 100%;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--mist);
+    box-shadow: var(--shadow);
+  }
+  .player button {
+    all: unset; cursor: pointer; position: absolute; inset: 0; display: block;
+  }
+  .player img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transition: transform .5s ease;
+  }
+  .player button::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, transparent 55%, rgba(29, 58, 92, .35));
+    transition: opacity .3s;
+  }
+  .play {
+    position: absolute; left: 50%; top: 50%; z-index: 1;
+    width: 58px; height: 58px; margin: -29px 0 0 -29px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .88);
+    backdrop-filter: blur(6px);
+    display: grid; place-items: center;
+    box-shadow: 0 6px 20px rgba(29, 58, 92, .25);
+    transition: transform .25s ease, background .25s;
+  }
+  .play svg { width: 20px; height: 20px; margin-left: 3px; fill: #1D3A5C; }
+  .player button:hover img { transform: scale(1.04); }
+  .player button:hover .play { transform: scale(1.08); background: #fff; }
+  .player button:focus-visible { outline: 3px solid var(--lagoon); outline-offset: -3px; border-radius: 14px; }
+  .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+  .card h2 {
+    margin: 0;
+    font: 600 15.5px/1.35 "Figtree", system-ui, sans-serif;
+    text-wrap: pretty;
+    overflow-wrap: anywhere;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 4px 10px;
+    font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums;
+  }
+  .meta span + span::before { content: "·"; margin-right: 10px; color: var(--sky); }
+
+  .empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 48px 0; }
+  footer { margin-top: 56px; font-size: 13px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Veille hebdomadaire · YouTube</span>
+    <h1>Biotechnologie <em>bleue</em>, aquaculture &amp; micro-algues</h1>
+    <p class="lede">Les vidéos repérées cette semaine autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature pour lancer la vidéo.</p>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Rechercher un titre ou une chaîne…" aria-label="Rechercher">
+      <select id="sort" aria-label="Trier">
+        <option value="date">Plus récentes</option>
+        <option value="views">Plus vues</option>
+      </select>
+      <span class="count" id="count"></span>
+    </div>
+  </header>
+
+  <main class="grid" id="grid"></main>
+
+  <footer>Données : YouTube Data API v3 — mise à jour chaque lundi via GitHub Actions.</footer>
+</div>
+
+<script type="text/plain" id="csv-data">
+Titre,Chaîne,Vues,Date,URL,Description
+[NCTV] Les coulisses de la science - L&#39;aquaculture des micro-algues,CALEDONIA,2001,2014-05-14,https://www.youtube.com/watch?v=s8kRjGoazQw,Magazine scientifique présenté par Ismaël WAKA-CÉOU et Michel PIMBÉ. Copyright © NCTV 2014.
+Centre national Formation des techniciens Pêche et aquaculture  Samuel Faye remplace Dr Tening SENE,DAKARACTU TV HD,1140,2020-06-03,https://www.youtube.com/watch?v=AjFRrrEe1N8,"Dakaractu, la chaine d'information en ligne! Abonnez-vous à notre chaîne sur YouTube : https://www.dakaractu.com/ Rejoignez ..."
+L&#39;Avenir de l&#39;Aquaculture et ses Nouvelles Technologies,aTech,18224,2022-10-10,https://www.youtube.com/watch?v=iI2Ysxtck2U,"Aujourd'hui, nous allons nous intéresser aux nouvelles technologies qui vont révolutionner l'avenir de l'aquaculture. Saviez-vous ..."
+Merinov - Histoire à conter,Canada's Ocean Supercluster,183,2022-12-20,https://www.youtube.com/watch?v=3TlhKAQe1CM,"Cette semaine, découvrez comment le centre de recherche industrielle de la mer au marché de Merinov innove dans les ..."
+Merinov (Merinov),TAC 360 CAT 360,40,2022-05-11,https://www.youtube.com/watch?v=n-liPHrDANQ,"Merinov est le plus grand centre intégré de recherche appliquée, d'innovation et de transfert technologique dans les domaines de ..."
+"Économie Bleue au SIPA 2025, Catalyseur de l&#39;Innovation pour une Pêche et une Aquaculture Durables.",Programme Economie Bleue - Algérie,355,2025-12-06,https://www.youtube.com/watch?v=1wsrvv4U6Vw,Le programme Économie Bleue financé par l' #unioneuropeenne a marqué le Salon International de la Pêche et de ...
+Conférence - J  LAZARD - Les aquacultures du monde et l’interdépendance entre mer et continent,Académie des sciences,704,2016-05-17,https://www.youtube.com/watch?v=xwrkXrSqlGc,Conférence de Jérôme LAZARD intitulée Les aquacultures du monde et l'interdépendance entre mer et continent 00:00:00 ...
+Aquaculture et Biotechnologie au Sénégal / Pr. Jean FALL (enseignant chercheur à l&#39;IUPA/UCAD,Parlons Science TV,1124,2020-05-20,https://www.youtube.com/watch?v=_swU-rl9i34,"Professeur Jean FALL, enseignant chercheur à l'Institut Universitaire de Pêche et d'Aquaculture (IUPA/UCAD) nous parle de ..."
+How Cell Cultured Seafood is Revolutionizing the Industry! (9 Minutes),BioTech Whisperer,480,2023-01-04,https://www.youtube.com/watch?v=B_rZ01ks8sc,Dr BioTech Whisperer introduces fish cell culture and relate it with aquaculture alongside its challenges 16 Minutes within this ...
+24012019 - MODULE2 -  Fisheries and Biotechnology,Harilal Menon,1543,2019-01-23,https://www.youtube.com/watch?v=Wb1Wb1YtBC0,"Relevance of modern biology and biotechnologies in production of food in water (Aquaculture) by, Dr. K. K. Vijayan Director, ..."
+Midi-carrière du RAQ:  Olivier Morissette 17 novembre 2021,Ressources Aquatiques Québec,19,2023-07-14,https://www.youtube.com/watch?v=v_oMjvp_1UQ,"Le RAQ organise des rencontres hybrides pour parler de carrière sur la thématique des pêches, de l'aquaculture et des ..."
+Bonne nouvelle pour les étudiants du CNFTPA. &quot; Bleu Incub &quot; mis en place pour les soutenir en cas de,Nouvelle Actu TV,221,2023-03-18,https://www.youtube.com/watch?v=j9KylgxgnnM,Vidéo de younoussa Balde.
+MODULE 3 - Aquaculture,BlueGeneration project,1182,2020-08-07,https://www.youtube.com/watch?v=BdG8NSkINKE,This course is intended for training mentors to do promotional visits and mentoring in the scope of the Blue Generation Project.
+La vidéo sous-marine au service de la recherche halieutique,Maison de la Mer,564,2018-09-19,https://www.youtube.com/watch?v=Nc5MwSL713Y,"Accessible à de nombreuses applications, tant en biologie qu'en technologie des pêches, la vidéo sous-marine est de plus en ..."
+La pêche et l’aquaculture en Finistère : Une filière plurielle et innovante,Finistère Économie,91,2017-07-27,https://www.youtube.com/watch?v=8-Hx927Oj58,"Les 27 et 28 juin 2017, le Conseil départemental du Finistère et les partenaires de la Charte d'internationalisation ont organisé un ..."
+Les pisciculteurs gabonais renforcent leurs capacités lors d&#39;un atelier,aLibrevilleTV,146,2016-05-18,https://www.youtube.com/watch?v=W1wUljXrWNQ,Les pisciculteurs gabonais renforcent leurs capacités lors d'un atelier organisé par l'Institut National Supérieur d'Agronomie et de ...
+"Énergies renouvelables et pêches, pour la relance d&#39;une économie durable",AQPER,106,2020-05-15,https://www.youtube.com/watch?v=Od_6zfKMw-Y,La production de biocarburants peut contribuer à l'essor de pêcheries et d'aquaculture durables et vertes. Les témoignages de ...
+Webinar biomasse marine : plongez au cœur de l&#39;innovation et des marchés,Bioeconomy For Change,405,2020-06-25,https://www.youtube.com/watch?v=UuxF_fO-Kpw,
+Production d&#39;énergie à partir de micro-algues marine : le défi de l&#39;industrialisation,Actu-Environnement,4888,2014-11-17,https://www.youtube.com/watch?v=fGQwVpCkfo4,"Cosmétique, agroalimentaire voire chimie verte restent des marchés de niche pour les micro-algues. La production ..."
+【InnoVEX - Finding Startups】Taiwan Innovative Smart Solution─HysonTech,InnoVEX,9153,2022-11-23,https://www.youtube.com/watch?v=rQtZDQNjF5k,Startup Name: HysonTech (Taiwan) Online Page: https://innovex.computex.biz/online/online.aspx?BNA=2902&TZ=65 ...
+Seaweed Anti Obesity Medicine by ICAR CMFRI | Success Stories,AgriBot,5,2026-06-23,https://www.youtube.com/watch?v=NT6UH70zecY,Discover Seaweed Anti-Obesity Medicine by ICAR-CMFRI in this video and learn how marine bioresources are being explored to ...
+Signature d&#39;une convention entre le CNFTPA et l&#39;entreprise allemande KTI,OBS TV,116,2021-05-26,https://www.youtube.com/watch?v=2EXNP1_qR9c,Actualité - Éducation - Formation.
+What is the Sprout Accelerator?,Sprout,6831,2023-10-31,https://www.youtube.com/watch?v=zEDNxslpdDQ,"The Sprout agrifoodtech accelerator is a fast-paced, dynamic, educational environment for agtech and foodtech entrepreneurs ..."
+Satisfait de sa visite au #CNFTPA le ministre des pêches  #AliouneNdoye  donne des orientations,OBS TV,148,2022-04-01,https://www.youtube.com/watch?v=vh5YO1U8dqY,Actualité - Économie - Pêche.
+Conférence de presse du lancement de la 9e édition de Savoir Affaires Maritime,Université du Québec,71,2024-02-19,https://www.youtube.com/watch?v=EUUSYxtcp5E,La conférence de presse s'est tenue le 7 février 2024 au campus de Rimouski de l'@UQARweb #SAMaritime2024 #maritime ...
+Microalgues : nos océans sont-ils toxiques ? • FRANCE 24,FRANCE 24,4167,2022-09-30,https://www.youtube.com/watch?v=XZXATHMqsU8,"D'un côté, elles sont vitales pour notre survie, de l'autre, parfois dangereuses et même mortelles pour les hommes : les ..."
+Webinaire 2021 - Impacts de la plaisance - Remédiation et restauration bio-inspirées,Réseau ECONAV - Éconaviguer ,94,2021-12-06,https://www.youtube.com/watch?v=l0vJfZdPuZE,Retrouvez ce webinaire de formation organisé dans le cadre du Programme national Eco-naviguer dans une aire marine ...
+Reportage Tébéo | Les bienfaits de la mer | Licence pro. Algues (CPTIM) - UCO Bretagne Nord,UCO Guingamp,220,2020-01-30,https://www.youtube.com/watch?v=SLkVgkgiPD0,"France 3 Bretagne a mis l'accent sur l'attrait des français pour le bord de mer. Au cours de ce reportage, les bienfaits de la mer ..."
+"MARine Biodiversity, Exploitation and Conservation",Université de Montpellier,1546,2021-10-13,https://www.youtube.com/watch?v=RvoapzUL1wc,"Dresser l'état des lieux de la biodiversité marine, comprendre et modéliser le fonctionnement et l'évolution des organismes et des ..."
+Bleu comme Demain,Vineliomusic,123,2025-04-14,https://www.youtube.com/watch?v=Af3TrNTCvSk,L'Économie Bleue désigne un modèle de développement économique durable fondé sur l'exploitation raisonnée et régénérative ...
+Dr Karim HILMI Directeur de recherche à l&#39;Institut National de Recherche Halieutique,Institut Royal des Etudes Stratégiques (IRES),647,2020-02-24,https://www.youtube.com/watch?v=3RLvTFSjSdI,Dr Karim HILMI Océanographe physicien et Directeur de recherche à l'Institut National de Recherche Halieutique Vice Président ...
+Révision des maquettes de l&#39;UFR Sciences agronomiques Elevage Pêche Aquaculture et Nutrition-SAEPAN,Université du Sine Saloum El-Hâdj Ibrahima NIASS,555,2023-08-08,https://www.youtube.com/watch?v=U09WInv-U9U,ussein #mesri #incubateur #uam #ugb #campusfrance.
+Le rôle des microalgues du sédiment dans l&#39;alimentation des coquillages,Crc Charente-Maritime,318,2019-10-22,https://www.youtube.com/watch?v=PIL8PRTJrWM,
+"Lou Cooperhouse, President &amp; CEO, BlueNalu - Healthy, Tasty, Safe &amp; Trusted Cell-Cultured Seafood","Progress, Potential, and Possibilities",2935,2021-03-23,https://www.youtube.com/watch?v=tbCl2U2EYX8,"Global demand for seafood is at an all time high, as consumers are increasingly choosing to eat the extraordinary variety of ..."
+MODULE 5 - Marine Biotechnology,BlueGeneration project,12107,2020-08-07,https://www.youtube.com/watch?v=YR5fvTCMeUs,This course is intended for training mentors to do promotional visits and mentoring in the scope of the Blue Generation Project.
+"C&#39;EST QUOI UN INGÉNIEUR ? avec Guillaume Le Reste, ingénieur en aquaculture (réseau FESIC)",C'est quoi un ingénieur ?,2301,2017-03-07,https://www.youtube.com/watch?v=5wom-SrcQ90,Guillaume Le Reste est diplômé de l'ESA (réseau de la FESIC) et présente son quotidien d'ingénieur en aquaculture.
+"Afrique, INNOVATION DANS LA PRODUCTION AGRICOLE",Africa 24,526,2020-05-15,https://www.youtube.com/watch?v=KAeIEajcrhI,La Fondation africaine pour les technologies agricoles (AATF) et l'Agence de développement de l'Union africaine ...
+RAQ’CONTE-MOI comment une goutte de sang nous informe sur la santé des poissons,Ressources Aquatiques Québec,5140,2026-01-27,https://www.youtube.com/watch?v=5Kogyxr29Lo,Cette capsule vous plonge au cœur d'une technique innovante en biologie : la biopsie liquide appliquée aux poissons.
+Atlantic BIOCON - Virtual Tour Series - CCNB-INNOV,Atlantic BIOCON,2872,2022-01-05,https://www.youtube.com/watch?v=hJfA_NDPPGg,https://ccnb.ca/entrepreneurship-et-innovation/recherches-et-services-industriels.aspx ...
+Atlantic BIOCON - Virtual Tour Series - LuminUltra,Atlantic BIOCON,12096,2021-12-13,https://www.youtube.com/watch?v=elyb7Pr48D0,"https://www.luminultra.com/ Join us and our partners as we take you on a tour of regional bioeconomy company, LuminUltra."
+TUBAkwilu agribusiness et pisciculture familiale project,FIDELA LUMEYA,18,2020-05-07,https://www.youtube.com/watch?v=01sQGUZv1dY,Une année après le succès de l'agribusiness nous explorons la pisciculture familiale a kkt.
+SEAWEED - Production et valorisation des algues dans la lagune de Marchica.,Nations Unies Maroc,694,2023-05-02,https://www.youtube.com/watch?v=YwGmnW0Y9AQ,بمناسبة مؤتمر كوب 26 تسلط منظومة الأمم المتحدة الإنمائية بالمغرب الضوء على تجارب ملهمة يقوم بها الشبان المغاربة يقدمون المثل في مجال ...
+"E783: Finless Foods clean fish biotech to address scarcity of healthy, affordable seafood",This Week in Startups,1541,2017-12-08,https://www.youtube.com/watch?v=Segkt69pdpc,"Fish consumption is on the rise, but the earth's exploitable fish supply is dwindling. And becoming more polluted. And expensive."
+Madagascar:Une algue marine comme matière première pour la production d’un bioplastique-Itw Eeckhaut,ARES - Académie de recherche et d'enseignement supérieur,1890,2020-11-18,https://www.youtube.com/watch?v=FGi4OrTdJtc,
+What is an accelerator?,Sprout,19543,2022-05-19,https://www.youtube.com/watch?v=0Od1Iv7YhGg,"The Sprout agrifoodtech accelerator is a face paced, dynamic, educational environment for agtech and foodtech entrepreneurs ..."
+C&#39;est Officiel! Maroc et Russie Scellent leur Accord de Pêche pour 2023!,Projets du Maroc,11003,2023-05-19,https://www.youtube.com/watch?v=0LYk6qhq4qs,Rejoignez cette chaîne pour bénéficier d'avantages exclusifs ...
+Reportage OF | Licence pro. Algues (CPTIM) Maturation de spores : algue brune - UCO Bretagne Nord,UCO Guingamp,157,2021-02-08,https://www.youtube.com/watch?v=S_lOEp7WoWg,"Nos étudiants en pleine expérience au sein de notre Laboratoire de Culture d'Algues ! Remi LEGALOIS, étudiant en licence ..."
+Ver Marin  : visitez l&#39;élevage qui révolutionne la greffe,HEMARINA,672,2022-04-07,https://www.youtube.com/watch?v=Bas5uDeEUnk,"reportage du Télégramme du 23/11/18. Après avoir convaincu le monde médical et scientifique et séduit les investisseurs, Franck ..."
+How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories – Inside Tilapia Industry,AgroWorks USA,1771822,2025-08-29,https://www.youtube.com/watch?v=m6h9qVV8SlQ,"tilapiaharvesting #tilapiaprocessing #tilapiafactory China leads the world in tilapia farming, producing billions of fish each year for ..."
+🌊 Journée Mondiale de l&#39;Océan 2023 - Biodiversité,MSC pêche durable,44589,2023-05-30,https://www.youtube.com/watch?v=--7eAAgWqRU,Les océans abritent une incroyable biodiversité. La préserver est une nécessité. Nous contribuons à la préservation de la ...
+</script>
+<script>
+  const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></svg>';
+
+  function parseCSV(text) {
+    const rows = []; let row = [], field = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
+        else if (c === '"') q = false;
+        else field += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(field); field = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.some(v => v !== "")) rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    row.push(field);
+    if (row.some(v => v !== "")) rows.push(row);
+    const [head, ...body] = rows;
+    return body.map(r => Object.fromEntries(head.map((h, i) => [h.trim(), r[i] ?? ""])));
+  }
+
+  const decoder = document.createElement("textarea");
+  const decode = s => { decoder.innerHTML = s; return decoder.value; };
+  const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const videoId = url => (url.match(/[?&]v=([\w-]{11})/) || [])[1];
+  const nf = new Intl.NumberFormat("fr-FR");
+  const df = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
+
+  let videos = [];
+
+  function render() {
+    const term = document.getElementById("q").value.trim().toLowerCase();
+    const sort = document.getElementById("sort").value;
+    const list = videos
+      .filter(v => !term || (v.title + " " + v.channel).toLowerCase().includes(term))
+      .sort((a, b) => sort === "views" ? b.views - a.views : b.date - a.date);
+
+    document.getElementById("count").textContent = `${list.length} vidéo${list.length > 1 ? "s" : ""}`;
+    const grid = document.getElementById("grid");
+    grid.innerHTML = list.length ? list.map(v => `
+      <article class="card">
+        <div class="player">
+          <button type="button" data-id="${v.id}" aria-label="Lire : ${esc(v.title)}">
+            <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="" loading="lazy">
+            <span class="play">${PLAY}</span>
+          </button>
+        </div>
+        <h2>${esc(v.title)}</h2>
+        <div class="meta">
+          <span>${esc(v.channel)}</span>
+          <span>${nf.format(v.views)} vues</span>
+          <span>${isNaN(v.date) ? "" : df.format(v.date)}</span>
+        </div>
+      </article>`).join("") : `<p class="empty">Aucune vidéo ne correspond à « ${esc(term)} ».</p>`;
+  }
+
+  document.getElementById("grid").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-id]");
+    if (!btn) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = `https://www.youtube-nocookie.com/embed/${btn.dataset.id}?autoplay=1&rel=0`;
+    iframe.title = btn.getAttribute("aria-label");
+    iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+    iframe.allowFullscreen = true;
+    iframe.referrerPolicy = "strict-origin-when-cross-origin";
+    btn.replaceWith(iframe);
+  });
+  document.getElementById("q").addEventListener("input", render);
+  document.getElementById("sort").addEventListener("change", render);
+
+  function load(text) {
+    text = text.replace(/^\uFEFF/, "");
+    videos = parseCSV(text)
+      .map(r => ({
+        id: videoId(r.URL || ""),
+        title: decode(r.Titre || ""),
+        channel: decode(r["Chaîne"] || ""),
+        views: Number(r.Vues) || 0,
+        date: new Date(r.Date),
+      }))
+      .filter(v => v.id);
+    render();
+  }
+
+  // Charge le CSV publié à côté de la page (mis à jour chaque semaine),
+  // sinon utilise la copie intégrée ci-dessus.
+  fetch("veille_biotech.csv", { cache: "no-store" })
+    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(load)
+    .catch(() => load(document.getElementById("csv-data").textContent.trim()));
+</script>
+</body>
+</html>
