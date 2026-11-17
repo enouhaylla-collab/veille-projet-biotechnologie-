@@ -133,7 +133,36 @@
   .player button:focus-visible { outline: 3px solid var(--lagoon); outline-offset: -3px; border-radius: 14px; }
   .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 
-  .card h2 {
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font: 500 13px/1 "Figtree", system-ui, sans-serif;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--mist);
+    border-radius: 999px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transition: background .2s, border-color .2s;
+  }
+  .chip small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+  .chip:hover { border-color: var(--sky); }
+  .chip[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); }
+  .chip:focus-visible { outline: 3px solid var(--lagoon); outline-offset: 2px; }
+
+  #content { display: grid; gap: 56px; }
+  .section-head {
+    display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+    margin: 0 0 20px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--mist);
+  }
+  .section-head h2 {
+    margin: 0;
+    font: 400 clamp(26px, 3.4vw, 34px)/1.1 "Instrument Serif", Georgia, serif;
+  }
+  .section-head span { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+
+  .card h3 {
     margin: 0;
     font: 600 15.5px/1.35 "Figtree", system-ui, sans-serif;
     text-wrap: pretty;
@@ -158,7 +187,7 @@
   <header>
     <span class="eyebrow">Veille hebdomadaire · YouTube</span>
     <h1>Biotechnologie <em>bleue</em>, aquaculture &amp; micro-algues</h1>
-    <p class="lede">Les vidéos repérées cette semaine autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature pour lancer la vidéo.</p>
+    <p class="lede">Les vidéos repérées cette semaine autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature : la vidéo se lance ici, sans quitter la page.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Rechercher un titre ou une chaîne…" aria-label="Rechercher">
       <select id="sort" aria-label="Trier">
@@ -167,9 +196,10 @@
       </select>
       <span class="count" id="count"></span>
     </div>
+    <nav class="chips" id="chips" aria-label="Catégories"></nav>
   </header>
 
-  <main class="grid" id="grid"></main>
+  <main id="content"></main>
 
   <footer>Données : YouTube Data API v3 — mise à jour chaque lundi via GitHub Actions.</footer>
 </div>
@@ -260,18 +290,31 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   const nf = new Intl.NumberFormat("fr-FR");
   const df = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
 
+  // Classement par mots-clés, testé d'abord sur le titre puis sur la
+  // description. L'ordre compte : la première catégorie trouvée l'emporte.
+  const CATEGORIES = [
+    ["Algues & micro-algues", /\b(micro-?algue|algue|alga|seaweed|spiruline|spirulina|phytoplancton|varech|kelp)/],
+    ["Biotechnologie & recherche", /\b(biotech|cellul|cell[- ]cultur|cultured|laborat|biopsie|genetique|genom|biomarqu|bioplastique|biomasse|bioecono|recherche|research|scienti|science)/],
+    ["Startups & innovation", /\b(startup|start-up|accelerat|incubat|entrepreneur|investiss|investor)/],
+    ["Formation & carrières", /\b(formation|module|course|cours|carriere|career|etudiant|student|licence|universit|conference|webinai?re?|webinar|ingenieur)/],
+    ["Aquaculture & élevage", /\b(aquacult|piscicult|elevage|farm|tilapia|crevette|shrimp|saumon|salmon|coquillage|huitre|ostrei|mytili)/],
+    ["Pêche & économie bleue", /\b(peche|fisher|fishing|halieut|economie bleue|blue economy|ocean|maritime|mer\b|marin)/],
+  ];
+  const AUTRES = "Autres sujets";
+  const norm = s => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  function categorize(title, description) {
+    for (const text of [norm(title), norm(description)]) {
+      const hit = CATEGORIES.find(([, re]) => re.test(text));
+      if (hit) return hit[0];
+    }
+    return AUTRES;
+  }
+  const ORDER = [...CATEGORIES.map(c => c[0]), AUTRES];
+
   let videos = [];
+  let activeCat = "all";
 
-  function render() {
-    const term = document.getElementById("q").value.trim().toLowerCase();
-    const sort = document.getElementById("sort").value;
-    const list = videos
-      .filter(v => !term || (v.title + " " + v.channel).toLowerCase().includes(term))
-      .sort((a, b) => sort === "views" ? b.views - a.views : b.date - a.date);
-
-    document.getElementById("count").textContent = `${list.length} vidéo${list.length > 1 ? "s" : ""}`;
-    const grid = document.getElementById("grid");
-    grid.innerHTML = list.length ? list.map(v => `
+  const card = v => `
       <article class="card">
         <div class="player">
           <button type="button" data-id="${v.id}" aria-label="Lire : ${esc(v.title)}">
@@ -279,16 +322,59 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
             <span class="play">${PLAY}</span>
           </button>
         </div>
-        <h2>${esc(v.title)}</h2>
+        <h3>${esc(v.title)}</h3>
         <div class="meta">
           <span>${esc(v.channel)}</span>
           <span>${nf.format(v.views)} vues</span>
           <span>${isNaN(v.date) ? "" : df.format(v.date)}</span>
         </div>
-      </article>`).join("") : `<p class="empty">Aucune vidéo ne correspond à « ${esc(term)} ».</p>`;
+      </article>`;
+
+  const plural = n => `${n} vidéo${n > 1 ? "s" : ""}`;
+
+  function render() {
+    const term = norm(document.getElementById("q").value.trim());
+    const sort = document.getElementById("sort").value;
+    const matching = videos
+      .filter(v => !term || norm(v.title + " " + v.channel).includes(term))
+      .sort((a, b) => sort === "views" ? b.views - a.views : b.date - a.date);
+
+    // Puces de catégories, avec le nombre de vidéos correspondant à la recherche
+    const counts = Object.fromEntries(ORDER.map(c => [c, 0]));
+    matching.forEach(v => counts[v.cat]++);
+    const chip = (key, label, n) =>
+      `<button type="button" class="chip" data-cat="${esc(key)}" aria-pressed="${activeCat === key}">${esc(label)}<small>${n}</small></button>`;
+    document.getElementById("chips").innerHTML =
+      chip("all", "Toutes", matching.length) +
+      ORDER.filter(c => counts[c]).map(c => chip(c, c, counts[c])).join("");
+
+    const list = activeCat === "all" ? matching : matching.filter(v => v.cat === activeCat);
+    document.getElementById("count").textContent = plural(list.length);
+
+    const content = document.getElementById("content");
+    if (!list.length) {
+      content.innerHTML = `<p class="empty">Aucune vidéo ne correspond à « ${esc(term)} ».</p>`;
+      return;
+    }
+    const groups = activeCat === "all" ? ORDER.filter(c => counts[c]) : [activeCat];
+    content.innerHTML = groups.map(cat => {
+      const items = list.filter(v => v.cat === cat);
+      return `
+      <section>
+        <div class="section-head"><h2>${esc(cat)}</h2><span>${plural(items.length)}</span></div>
+        <div class="grid">${items.map(card).join("")}</div>
+      </section>`;
+    }).join("");
   }
 
-  document.getElementById("grid").addEventListener("click", e => {
+  document.getElementById("chips").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-cat]");
+    if (!btn) return;
+    activeCat = btn.dataset.cat;
+    render();
+  });
+
+  document.getElementById("content").addEventListener("click", e => {
     const btn = e.target.closest("button[data-id]");
     if (!btn) return;
     const iframe = document.createElement("iframe");
@@ -311,6 +397,7 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
         channel: decode(r["Chaîne"] || ""),
         views: Number(r.Vues) || 0,
         date: new Date(r.Date),
+        cat: categorize(decode(r.Titre || ""), decode(r.Description || "")),
       }))
       .filter(v => v.id);
     render();

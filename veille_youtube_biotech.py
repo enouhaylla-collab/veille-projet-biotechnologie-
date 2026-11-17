@@ -26,7 +26,8 @@ MOTS_CLES = [
     "micro-algues pêche",
 ]
 MAX_RESULTATS = 50  # maximum autorisé par requête search.list
-FICHIER_SORTIE = "veille_biotech.csv"
+# Le CSV vit dans docs/ : le site GitHub Pages le lit directement.
+FICHIER_SORTIE = os.path.join("docs", "veille_biotech.csv")
 
 
 def get_youtube_client():
@@ -61,7 +62,7 @@ def recuperer_details(youtube, video_ids):
         lot = video_ids[i : i + 50]
         reponse = (
             youtube.videos()
-            .list(part="snippet,statistics", id=",".join(lot))
+            .list(part="snippet,statistics,status", id=",".join(lot))
             .execute()
         )
         details.extend(reponse.get("items", []))
@@ -82,6 +83,10 @@ def main():
             continue
 
         for video in videos:
+            # On ignore les vidéos dont l'auteur interdit la lecture
+            # intégrée : elles renverraient le visiteur vers YouTube.
+            if not video.get("status", {}).get("embeddable", False):
+                continue
             snippet = video["snippet"]
             stats = video.get("statistics", {})
             lignes.append(
@@ -102,7 +107,6 @@ def main():
         return
 
     df = pd.DataFrame(lignes)
-    df["Date"] = pd.to_datetime(df["Date"], utc=True)
     # Une même vidéo peut remonter pour plusieurs mots-clés : on regroupe.
     df = (
         df.groupby("URL", as_index=False)
@@ -114,13 +118,23 @@ def main():
             "Date": "first",
             "Description": "first",
         })
-        .sort_values("Date", ascending=False)
     )
     df = df[["Titre", "Chaîne", "Vues", "Date", "URL", "Description", "Mot-clé"]]
 
+    # Ajout à l'historique : les anciennes vidéos restent sur le site,
+    # les doublons gardent les statistiques les plus récentes.
+    if os.path.exists(FICHIER_SORTIE):
+        ancien = pd.read_csv(FICHIER_SORTIE, encoding="utf-8-sig")
+        df = pd.concat([df, ancien], ignore_index=True).drop_duplicates(
+            subset="URL", keep="first"
+        )
+    df["Date"] = pd.to_datetime(df["Date"], utc=True, format="mixed")
+    df = df.sort_values("Date", ascending=False)
+    df["Date"] = df["Date"].dt.strftime("%Y-%m-%d")
+
     # utf-8-sig : accents correctement affichés à l'ouverture dans Excel
     df.to_csv(FICHIER_SORTIE, index=False, encoding="utf-8-sig")
-    print(f"\n{len(df)} vidéos uniques sauvegardées dans {FICHIER_SORTIE}")
+    print(f"\n{len(df)} vidéos au total dans {FICHIER_SORTIE}")
 
 
 if __name__ == "__main__":

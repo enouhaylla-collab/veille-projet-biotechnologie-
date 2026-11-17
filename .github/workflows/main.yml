@@ -6,6 +6,9 @@ on:
     - cron: "0 8 * * 1"
   workflow_dispatch: # permet aussi un lancement manuel depuis l'onglet Actions
 
+permissions:
+  contents: write # nécessaire pour enregistrer le CSV mis à jour dans le dépôt
+
 jobs:
   veille:
     runs-on: ubuntu-latest
@@ -32,9 +35,21 @@ jobs:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
         run: python veille_youtube_biotech.py
 
+      - name: Publier les nouvelles vidéos sur le site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/veille_biotech.csv
+          if git diff --cached --quiet; then
+            echo "Aucune nouvelle vidéo cette semaine."
+          else
+            git commit -m "Veille du $(date +%F) : mise à jour des vidéos"
+            git push
+          fi
+
       - name: Sauvegarder le CSV comme artefact
         uses: actions/upload-artifact@v4
         with:
           name: veille-biotech-${{ github.run_id }}
-          path: veille_biotech.csv
+          path: docs/veille_biotech.csv
           retention-days: 90
