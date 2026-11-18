@@ -208,9 +208,9 @@
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">Veille hebdomadaire · YouTube</span>
+    <span class="eyebrow">Veille quotidienne · YouTube</span>
     <h1>Biotechnologie <em>bleue</em>, aquaculture &amp; micro-algues</h1>
-    <p class="lede">Les vidéos repérées cette semaine autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature : la vidéo se lance ici, sans quitter la page.</p>
+    <p class="lede">Les dernières vidéos repérées autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature : la vidéo se lance ici, sans quitter la page.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Rechercher un titre ou une chaîne…" aria-label="Rechercher">
       <select id="lang" aria-label="Langue">
@@ -231,7 +231,7 @@
 
   <main id="content"></main>
 
-  <footer>Données : YouTube Data API v3 — mise à jour chaque lundi via GitHub Actions.</footer>
+  <footer>Données : YouTube Data API v3 — mise à jour chaque matin via GitHub Actions<span id="updated"></span>.</footer>
 </div>
 
 <script type="text/plain" id="csv-data">
@@ -579,7 +579,12 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   // Charge le CSV publié à côté de la page (mis à jour chaque semaine),
   // sinon utilise la copie intégrée ci-dessus.
   fetch("veille_biotech.csv", { cache: "no-store" })
-    .then(r => r.ok ? r.text() : Promise.reject())
+    .then(r => {
+      if (!r.ok) return Promise.reject();
+      const modified = new Date(r.headers.get("last-modified"));
+      if (!isNaN(modified)) document.getElementById("updated").textContent = ` · dernière mise à jour le ${seenFmt.format(modified)}`;
+      return r.text();
+    })
     .then(load)
     .catch(() => load(document.getElementById("csv-data").textContent.trim()));
 </script>

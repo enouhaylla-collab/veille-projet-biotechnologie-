@@ -2,12 +2,17 @@ name: Veille YouTube Biotech
 
 on:
   schedule:
-    # Tous les lundis à 8h00 UTC (cron GitHub = toujours en UTC)
-    - cron: "0 8 * * 1"
+    # Tous les jours à 6h00 UTC, soit 7h (hiver) ou 8h (été) à Paris
+    - cron: "0 6 * * *"
   workflow_dispatch: # permet aussi un lancement manuel depuis l'onglet Actions
 
 permissions:
   contents: write # nécessaire pour enregistrer le CSV mis à jour dans le dépôt
+
+# Une seule collecte à la fois : évite deux mises à jour concurrentes du CSV
+concurrency:
+  group: veille
+  cancel-in-progress: false
 
 jobs:
   veille:
@@ -41,9 +46,11 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/veille_biotech.csv
           if git diff --cached --quiet; then
-            echo "Aucune nouvelle vidéo cette semaine."
+            echo "Aucune nouvelle vidéo aujourd'hui."
           else
             git commit -m "Veille du $(date +%F) : mise à jour des vidéos"
+            # Intègre d'éventuels changements poussés pendant la collecte
+            git pull --rebase origin main
             git push
           fi
 
