@@ -212,6 +212,9 @@
     <p class="lede">Les vidéos repérées cette semaine autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature : la vidéo se lance ici, sans quitter la page.</p>
     <div class="tools">
       <input id="q" type="search" placeholder="Rechercher un titre ou une chaîne…" aria-label="Rechercher">
+      <select id="lang" aria-label="Langue">
+        <option value="all">Toutes les langues</option>
+      </select>
       <select id="sort" aria-label="Trier">
         <option value="date">Plus récentes</option>
         <option value="views">Plus vues</option>
@@ -337,6 +340,43 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   }
   const ORDER = [...CATEGORIES.map(c => c[0]), AUTRES];
 
+  // Langue : celle déclarée sur YouTube si présente, sinon devinée à partir
+  // de l'alphabet puis des petits mots les plus courants de chaque langue.
+  const LANGUES = { fr: "Français", en: "Anglais", es: "Espagnol", pt: "Portugais", de: "Allemand", it: "Italien", ar: "Arabe", ru: "Russe", zh: "Chinois", ja: "Japonais", ko: "Coréen", hi: "Hindi" };
+  const AUTRE_LANGUE = "autre";
+  const SCRIPTS = [
+    ["ar", /[؀-ۿ]/g], ["ru", /[Ѐ-ӿ]/g], ["hi", /[ऀ-ॿ]/g],
+    ["ko", /[가-힯]/g], ["ja", /[぀-ヿ]/g], ["zh", /[一-鿿]/g],
+  ];
+  const MOTS_OUTILS = Object.fromEntries(Object.entries({
+    fr: "le la les des du de et un une pour dans sur est avec au aux nous vous ce qui que l d comme par plus sont ou son ses",
+    en: "the and of to in is for with on how what are this that from by your we you it",
+    es: "el los las del y en para con por una que es como su se más",
+    pt: "o os as do da dos das e em para com uma que não é como mais",
+    de: "der die das und ist mit für von den ein eine auf nicht wie",
+    it: "il lo gli della delle e di per con una che è sono come più",
+  }).map(([code, words]) => [code, new Set(words.split(" "))]));
+  function detectLang(title, description) {
+    const text = `${title} ${title} ${description}`.toLowerCase(); // le titre compte double
+    const letters = (text.match(/\p{L}/gu) || []).length || 1;
+    for (const [code, re] of SCRIPTS) {
+      if ((text.match(re) || []).length / letters > 0.3) return code;
+    }
+    // Découpage Unicode : « l'économie » donne « l » + « économie »
+    const words = text.split(/[^\p{L}]+/u);
+    let best = AUTRE_LANGUE, bestScore = 1;
+    for (const [code, set] of Object.entries(MOTS_OUTILS)) {
+      const score = words.filter(w => set.has(w)).length;
+      if (score > bestScore) { best = code; bestScore = score; }
+    }
+    return best;
+  }
+  function langOf(declared, title, description) {
+    const code = (declared || "").toLowerCase().split("-")[0];
+    return LANGUES[code] ? code : detectLang(title, description);
+  }
+  const langLabel = code => LANGUES[code] || "Autres langues";
+
   let videos = [];
   let activeCat = "all";
   const APERCU = 6; // vidéos par catégorie dans la vue « Toutes »
@@ -384,14 +424,29 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   }
   function historyList(term) {
     return watched
-      .map(w => ({ ...(videos.find(v => v.id === w.id) || { ...w, date: new Date(w.date) }), at: w.at }))
+      .map(w => ({ ...(videos.find(v => v.id === w.id) || { ...w, date: new Date(w.date), lang: detectLang(w.title, "") }), at: w.at }))
       .filter(v => !term || norm(v.title + " " + v.channel).includes(term));
+  }
+
+  // Liste des langues présentes, de la plus fréquente à la plus rare
+  function fillLangSelect() {
+    const select = document.getElementById("lang");
+    const current = select.value;
+    const counts = {};
+    videos.forEach(v => { counts[v.lang] = (counts[v.lang] || 0) + 1; });
+    const codes = Object.keys(counts)
+      .sort((a, b) => (a === AUTRE_LANGUE) - (b === AUTRE_LANGUE) || counts[b] - counts[a]);
+    select.innerHTML = `<option value="all">Toutes les langues</option>` +
+      codes.map(c => `<option value="${c}">${langLabel(c)} (${counts[c]})</option>`).join("");
+    select.value = codes.includes(current) ? current : "all";
   }
 
   function render() {
     const term = norm(document.getElementById("q").value.trim());
     const sort = document.getElementById("sort").value;
+    const lang = document.getElementById("lang").value;
     const matching = videos
+      .filter(v => lang === "all" || v.lang === lang)
       .filter(v => !term || norm(v.title + " " + v.channel).includes(term))
       .sort((a, b) => sort === "views" ? b.views - a.views : b.date - a.date);
 
@@ -400,7 +455,7 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
     matching.forEach(v => counts[v.cat]++);
     const chip = (key, label, n) =>
       `<button type="button" class="chip" data-cat="${esc(key)}" aria-pressed="${activeCat === key}">${esc(label)}<small>${n}</small></button>`;
-    const history = historyList(term);
+    const history = historyList(term).filter(v => lang === "all" || v.lang === lang);
     document.getElementById("chips").innerHTML =
       chip("all", "Toutes", matching.length) +
       ORDER.filter(c => counts[c]).map(c => chip(c, c, counts[c])).join("") +
@@ -501,6 +556,7 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
 
   document.getElementById("q").addEventListener("input", render);
   document.getElementById("sort").addEventListener("change", render);
+  document.getElementById("lang").addEventListener("change", render);
 
   function load(text) {
     text = text.replace(/^\uFEFF/, "");
@@ -512,8 +568,10 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
         views: Number(r.Vues) || 0,
         date: new Date(r.Date),
         cat: categorize(decode(r.Titre || ""), decode(r.Description || "")),
+        lang: langOf(r.Langue, decode(r.Titre || ""), decode(r.Description || "")),
       }))
       .filter(v => v.id);
+    fillLangSelect();
     render();
   }
 

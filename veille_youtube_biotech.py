@@ -137,6 +137,10 @@ def main():
                     "Date": snippet.get("publishedAt"),
                     "URL": f"https://www.youtube.com/watch?v={video['id']}",
                     "Description": snippet.get("description", ""),
+                    # Langue déclarée par la chaîne (souvent vide : le site
+                    # devine alors la langue à partir du titre)
+                    "Langue": snippet.get("defaultAudioLanguage")
+                    or snippet.get("defaultLanguage", ""),
                 }
             )
         print(f"  {len(videos)} vidéos récupérées.")
@@ -156,9 +160,10 @@ def main():
             "Vues": "first",
             "Date": "first",
             "Description": "first",
+            "Langue": "first",
         })
     )
-    df = df[["Titre", "Chaîne", "Vues", "Date", "URL", "Description", "Mot-clé"]]
+    df = df[["Titre", "Chaîne", "Vues", "Date", "URL", "Description", "Langue", "Mot-clé"]]
 
     # Ajout à l'historique : les anciennes vidéos restent sur le site,
     # les doublons gardent les statistiques les plus récentes.
