@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Veille Biotech Bleue</title>
+<title>BioTube</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;800&display=swap">
 <style>
   :root {
     --ground: #EEF5FB;
@@ -58,18 +58,23 @@
   .wrap { max-width: 1180px; margin: 0 auto; padding-block: 56px 72px; }
 
   header { display: grid; gap: 14px; margin-bottom: 36px; }
-  .eyebrow {
-    font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
-    color: var(--lagoon);
-  }
-  h1 {
+  /* Logo BioTube : « Bio » bleu sur blanc, « Tube » blanc sur bleu,
+     dans un rectangle aux angles arrondis. Couleurs fixes dans les deux thèmes. */
+  .logo {
+    --logo-blue: #3B7CC4;
+    justify-self: start;
+    display: inline-flex;
     margin: 0;
-    font: 400 clamp(40px, 6vw, 68px)/1.02 "Instrument Serif", Georgia, serif;
-    letter-spacing: -.01em;
-    text-wrap: balance;
+    border: 3px solid var(--logo-blue);
+    border-radius: 18px;
+    overflow: hidden;
+    font: 800 clamp(44px, 7vw, 76px)/1 "Figtree", system-ui, sans-serif;
+    letter-spacing: -.02em;
+    box-shadow: var(--shadow);
   }
-  h1 em { color: var(--lagoon); }
-  .lede { margin: 0; max-width: 60ch; color: var(--muted); font-size: 16px; }
+  .logo span { padding: .1em .28em .14em; }
+  .logo .bio { background: #FFFFFF; color: var(--logo-blue); }
+  .logo .tube { background: var(--logo-blue); color: #FFFFFF; }
 
   .tools {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
@@ -208,9 +213,7 @@
 <body>
 <div class="wrap">
   <header>
-    <span class="eyebrow">Veille quotidienne · YouTube</span>
-    <h1>Biotechnologie <em>bleue</em>, aquaculture &amp; micro-algues</h1>
-    <p class="lede">Les dernières vidéos repérées autour de la biotechnologie halieutique, de l'innovation aquacole et des micro-algues. Cliquez sur une miniature : la vidéo se lance ici, sans quitter la page.</p>
+    <h1 class="logo" aria-label="BioTube"><span class="bio">Bio</span><span class="tube">Tube</span></h1>
     <div class="tools">
       <input id="q" type="search" placeholder="Rechercher un titre ou une chaîne…" aria-label="Rechercher">
       <select id="lang" aria-label="Langue">
