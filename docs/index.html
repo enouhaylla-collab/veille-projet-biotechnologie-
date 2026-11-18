@@ -157,6 +157,22 @@
 
   #content { display: grid; gap: 56px; }
   .chip.more { display: block; margin: 24px auto 0; padding: 10px 20px; }
+  .chip-history { border-style: dashed; }
+  .chip-history[aria-pressed="true"] { border-style: solid; }
+  .seen {
+    position: absolute; top: 10px; left: 10px; z-index: 1;
+    font: 600 11.5px/1 "Figtree", system-ui, sans-serif; letter-spacing: .02em;
+    color: #1D3A5C; background: rgba(255, 255, 255, .9);
+    border-radius: 999px; padding: 5px 10px;
+  }
+  .link-btn {
+    margin-left: auto;
+    font: 500 13px/1 "Figtree", system-ui, sans-serif;
+    color: var(--muted); background: none; border: 0; padding: 4px 0;
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+  }
+  .link-btn:hover { color: var(--ink); }
+  .link-btn:focus-visible { outline: 3px solid var(--lagoon); outline-offset: 2px; border-radius: 4px; }
   .section-head {
     display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
     margin: 0 0 20px; padding-bottom: 10px;
@@ -325,23 +341,52 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   let activeCat = "all";
   const APERCU = 6; // vidéos par catégorie dans la vue « Toutes »
 
-  const card = v => `
+  // seenAt : date de visionnage, passée seulement dans la vue Historique
+  const card = (v, seenAt) => `
       <article class="card">
         <div class="player">
           <button type="button" data-id="${v.id}" aria-label="Lire : ${esc(v.title)}">
             <img src="https://i.ytimg.com/vi/${v.id}/hqdefault.jpg" alt="" loading="lazy">
             <span class="play">${PLAY}</span>
+            ${!seenAt && isSeen(v.id) ? `<span class="seen">Vue</span>` : ""}
           </button>
         </div>
         <h3>${esc(v.title)}</h3>
         <div class="meta">
           <span>${esc(v.channel)}</span>
-          <span>${nf.format(v.views)} vues</span>
-          <span>${isNaN(v.date) ? "" : df.format(v.date)}</span>
+          ${seenAt
+            ? `<span>Vue le ${seenFmt.format(seenAt)}</span>`
+            : `<span>${nf.format(v.views)} vues</span>
+          <span>${isNaN(v.date) ? "" : df.format(v.date)}</span>`}
         </div>
       </article>`;
 
   const plural = n => `${n} vidéo${n > 1 ? "s" : ""}`;
+
+  // Historique des vidéos lancées sur le site, gardé dans ce navigateur
+  const HISTORY_KEY = "watchHistory";
+  const HISTORY_MAX = 300;
+  const seenFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  let watched = [];
+  try { watched = JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; } catch {}
+  const isSeen = id => watched.some(w => w.id === id);
+
+  function saveHistory() {
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(watched)); } catch {}
+  }
+  function addToHistory(v) {
+    // On garde titre et chaîne : la vidéo reste affichable même si elle
+    // disparaît un jour du CSV.
+    const entry = { id: v.id, title: v.title, channel: v.channel, views: v.views,
+      date: isNaN(v.date) ? "" : v.date.toISOString(), at: Date.now() };
+    watched = [entry, ...watched.filter(w => w.id !== v.id)].slice(0, HISTORY_MAX);
+    saveHistory();
+  }
+  function historyList(term) {
+    return watched
+      .map(w => ({ ...(videos.find(v => v.id === w.id) || { ...w, date: new Date(w.date) }), at: w.at }))
+      .filter(v => !term || norm(v.title + " " + v.channel).includes(term));
+  }
 
   function render() {
     const term = norm(document.getElementById("q").value.trim());
@@ -355,14 +400,32 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
     matching.forEach(v => counts[v.cat]++);
     const chip = (key, label, n) =>
       `<button type="button" class="chip" data-cat="${esc(key)}" aria-pressed="${activeCat === key}">${esc(label)}<small>${n}</small></button>`;
+    const history = historyList(term);
     document.getElementById("chips").innerHTML =
       chip("all", "Toutes", matching.length) +
-      ORDER.filter(c => counts[c]).map(c => chip(c, c, counts[c])).join("");
+      ORDER.filter(c => counts[c]).map(c => chip(c, c, counts[c])).join("") +
+      `<button type="button" class="chip chip-history" data-cat="history" aria-pressed="${activeCat === "history"}">Historique<small>${history.length}</small></button>`;
+
+    const content = document.getElementById("content");
+
+    if (activeCat === "history") {
+      document.getElementById("count").textContent = plural(history.length);
+      content.innerHTML = `
+      <section>
+        <div class="section-head">
+          <h2>Mon historique</h2><span>${plural(history.length)}</span>
+          ${watched.length ? `<button type="button" class="link-btn" data-action="clear-history">Effacer l'historique</button>` : ""}
+        </div>
+        ${history.length
+          ? `<div class="grid">${history.map(v => card(v, v.at)).join("")}</div>`
+          : `<p class="empty">${term ? `Aucune vidéo de l'historique ne correspond à « ${esc(term)} ».` : "Les vidéos que vous lancez sur ce site apparaîtront ici."}</p>`}
+      </section>`;
+      return;
+    }
 
     const list = activeCat === "all" ? matching : matching.filter(v => v.cat === activeCat);
     document.getElementById("count").textContent = plural(list.length);
 
-    const content = document.getElementById("content");
     if (!list.length) {
       content.innerHTML = `<p class="empty">Aucune vidéo ne correspond à « ${esc(term)} ».</p>`;
       return;
@@ -378,7 +441,7 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
       return `
       <section>
         <div class="section-head"><h2>${esc(cat)}</h2><span>${plural(items.length)}</span></div>
-        <div class="grid">${items.slice(0, preview).map(card).join("")}</div>
+        <div class="grid">${items.slice(0, preview).map(v => card(v)).join("")}</div>
         ${more}
       </section>`;
     }).join("");
@@ -399,8 +462,25 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
       document.getElementById("chips").scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+    if (e.target.closest("[data-action='clear-history']")) {
+      if (confirm("Effacer tout l'historique de ce navigateur ? Cette action est définitive.")) {
+        watched = [];
+        saveHistory();
+        render();
+      }
+      return;
+    }
     const btn = e.target.closest("button[data-id]");
     if (!btn) return;
+
+    // Enregistre la lecture sans tout redessiner (la vidéo doit continuer)
+    const v = videos.find(x => x.id === btn.dataset.id) || historyList("").find(x => x.id === btn.dataset.id);
+    if (v) {
+      addToHistory(v);
+      const counter = document.querySelector(".chip-history small");
+      if (counter) counter.textContent = watched.length;
+    }
+
     const iframe = document.createElement("iframe");
     // Lecteur standard : la lecture compte dans l'historique du compte
     // YouTube connecté dans ce navigateur. Sinon, lecteur sans cookies.
