@@ -1,8 +1,8 @@
 """
 Veille YouTube – Biotechnologie halieutique & aquaculture.
 
-Recherche les 50 vidéos les plus récentes pour chaque mot-clé via la
-YouTube Data API v3, enrichit les résultats (vues, description complète)
+Recherche les vidéos les plus récentes pour chaque mot-clé (français et
+anglais, plusieurs pages de résultats) via la YouTube Data API v3, enrichit les résultats (vues, description complète)
 et sauvegarde le tout dans veille_biotech.csv.
 
 Prérequis :
@@ -14,6 +14,7 @@ Configuration de la clé API (jamais en clair dans le code) :
 """
 
 import os
+import re
 import sys
 
 import pandas as pd
@@ -21,11 +22,30 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 MOTS_CLES = [
+    # Français
     "biotechnologie halieutique",
     "aquaculture innovation",
     "micro-algues pêche",
+    "biotechnologie marine",
+    "micro-algues",
+    "culture d'algues",
+    "pisciculture durable",
+    "économie bleue",
+    "recherche halieutique",
+    # Anglais
+    "marine biotechnology",
+    "aquaculture technology",
+    "microalgae",
+    "seaweed farming",
+    "cell-cultured seafood",
+    "blue biotechnology",
+    "sustainable aquaculture",
 ]
 MAX_RESULTATS = 50  # maximum autorisé par requête search.list
+# Pages de 50 résultats par mot-clé. Quota : 16 mots-clés x 2 pages x 100
+# unités = 3 200 unités par exécution, sur 10 000 gratuites par jour.
+PAGES_PAR_MOT_CLE = 2
+DUREE_MIN_SECONDES = 60  # écarte les Shorts, peu adaptés au site
 # Le CSV vit dans docs/ : le site GitHub Pages le lit directement.
 FICHIER_SORTIE = os.path.join("docs", "veille_biotech.csv")
 
@@ -39,20 +59,36 @@ def get_youtube_client():
     return build("youtube", "v3", developerKey=api_key)
 
 
-def rechercher_videos(youtube, mot_cle, max_resultats=MAX_RESULTATS):
+def rechercher_videos(youtube, mot_cle, pages=PAGES_PAR_MOT_CLE):
     """Retourne les IDs des vidéos les plus récentes pour un mot-clé."""
-    reponse = (
-        youtube.search()
-        .list(
-            q=mot_cle,
-            part="id",
-            type="video",
-            order="date",
-            maxResults=max_resultats,
+    ids, page_token = [], None
+    for _ in range(pages):
+        reponse = (
+            youtube.search()
+            .list(
+                q=mot_cle,
+                part="id",
+                type="video",
+                order="date",
+                maxResults=MAX_RESULTATS,
+                pageToken=page_token,
+            )
+            .execute()
         )
-        .execute()
-    )
-    return [item["id"]["videoId"] for item in reponse.get("items", [])]
+        ids += [item["id"]["videoId"] for item in reponse.get("items", [])]
+        page_token = reponse.get("nextPageToken")
+        if not page_token:
+            break
+    return ids
+
+
+def duree_en_secondes(iso):
+    """Convertit une durée ISO 8601 (ex. PT1H2M30S) en secondes."""
+    m = re.fullmatch(r"P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso or "")
+    if not m:
+        return 0
+    j, h, mn, s = (int(x or 0) for x in m.groups())
+    return ((j * 24 + h) * 60 + mn) * 60 + s
 
 
 def recuperer_details(youtube, video_ids):
@@ -62,7 +98,7 @@ def recuperer_details(youtube, video_ids):
         lot = video_ids[i : i + 50]
         reponse = (
             youtube.videos()
-            .list(part="snippet,statistics,status", id=",".join(lot))
+            .list(part="snippet,statistics,status,contentDetails", id=",".join(lot))
             .execute()
         )
         details.extend(reponse.get("items", []))
@@ -86,6 +122,9 @@ def main():
             # On ignore les vidéos dont l'auteur interdit la lecture
             # intégrée : elles renverraient le visiteur vers YouTube.
             if not video.get("status", {}).get("embeddable", False):
+                continue
+            duree = video.get("contentDetails", {}).get("duration")
+            if duree_en_secondes(duree) < DUREE_MIN_SECONDES:
                 continue
             snippet = video["snippet"]
             stats = video.get("statistics", {})

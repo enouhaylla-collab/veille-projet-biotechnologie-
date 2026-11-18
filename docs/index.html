@@ -151,6 +151,7 @@
   .chip:focus-visible { outline: 3px solid var(--lagoon); outline-offset: 2px; }
 
   #content { display: grid; gap: 56px; }
+  .chip.more { display: block; margin: 24px auto 0; padding: 10px 20px; }
   .section-head {
     display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
     margin: 0 0 20px; padding-bottom: 10px;
@@ -313,6 +314,7 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
 
   let videos = [];
   let activeCat = "all";
+  const APERCU = 6; // vidéos par catégorie dans la vue « Toutes »
 
   const card = v => `
       <article class="card">
@@ -357,12 +359,18 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
       return;
     }
     const groups = activeCat === "all" ? ORDER.filter(c => counts[c]) : [activeCat];
+    // Vue « Toutes » : un aperçu par catégorie, le reste derrière un bouton
+    const preview = activeCat === "all" ? APERCU : Infinity;
     content.innerHTML = groups.map(cat => {
       const items = list.filter(v => v.cat === cat);
+      const more = items.length > preview
+        ? `<button type="button" class="chip more" data-cat="${esc(cat)}">Voir les ${items.length} vidéos</button>`
+        : "";
       return `
       <section>
         <div class="section-head"><h2>${esc(cat)}</h2><span>${plural(items.length)}</span></div>
-        <div class="grid">${items.map(card).join("")}</div>
+        <div class="grid">${items.slice(0, preview).map(card).join("")}</div>
+        ${more}
       </section>`;
     }).join("");
   }
@@ -375,6 +383,13 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
   });
 
   document.getElementById("content").addEventListener("click", e => {
+    const moreBtn = e.target.closest("button[data-cat]");
+    if (moreBtn) {
+      activeCat = moreBtn.dataset.cat;
+      render();
+      document.getElementById("chips").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
     const btn = e.target.closest("button[data-id]");
     if (!btn) return;
     const iframe = document.createElement("iframe");
