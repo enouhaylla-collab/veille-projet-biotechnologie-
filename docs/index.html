@@ -85,6 +85,11 @@
   }
   .tools input { flex: 1 1 260px; max-width: 380px; }
   .tools input:focus-visible, .tools select:focus-visible { border-color: var(--lagoon); box-shadow: 0 0 0 3px var(--mist); }
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--muted); cursor: pointer;
+  }
+  .toggle input { accent-color: var(--lagoon); width: 16px; height: 16px; margin: 0; cursor: pointer; }
   .count { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; margin-left: auto; }
 
   .grid {
@@ -195,6 +200,10 @@
         <option value="date">Plus récentes</option>
         <option value="views">Plus vues</option>
       </select>
+      <label class="toggle" for="history" title="Être connecté·e à YouTube dans ce navigateur">
+        <input id="history" type="checkbox">
+        <span>Ajouter à mon historique YouTube</span>
+      </label>
       <span class="count" id="count"></span>
     </div>
     <nav class="chips" id="chips" aria-label="Catégories"></nav>
@@ -393,13 +402,23 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
     const btn = e.target.closest("button[data-id]");
     if (!btn) return;
     const iframe = document.createElement("iframe");
-    iframe.src = `https://www.youtube-nocookie.com/embed/${btn.dataset.id}?autoplay=1&rel=0`;
+    // Lecteur standard : la lecture compte dans l'historique du compte
+    // YouTube connecté dans ce navigateur. Sinon, lecteur sans cookies.
+    const host = historyBox.checked ? "www.youtube.com" : "www.youtube-nocookie.com";
+    iframe.src = `https://${host}/embed/${btn.dataset.id}?autoplay=1&rel=0`;
     iframe.title = btn.getAttribute("aria-label");
     iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
     iframe.allowFullscreen = true;
     iframe.referrerPolicy = "strict-origin-when-cross-origin";
     btn.replaceWith(iframe);
   });
+  // Choix mémorisé dans ce navigateur uniquement
+  const historyBox = document.getElementById("history");
+  try { historyBox.checked = localStorage.getItem("ytHistory") === "1"; } catch {}
+  historyBox.addEventListener("change", () => {
+    try { localStorage.setItem("ytHistory", historyBox.checked ? "1" : "0"); } catch {}
+  });
+
   document.getElementById("q").addEventListener("input", render);
   document.getElementById("sort").addEventListener("change", render);
 
