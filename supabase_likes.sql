@@ -10,6 +10,7 @@ create table if not exists public.likes (
 alter table public.likes enable row level security;
 drop policy if exists "Lecture publique" on public.likes;
 create policy "Lecture publique" on public.likes for select using (true);
+grant select on public.likes to anon;
 
 -- Seule porte d'écriture : +1 ou -1 sur un identifiant de vidéo YouTube valide.
 create or replace function public.like_video(vid text, delta integer)

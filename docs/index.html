@@ -173,6 +173,8 @@
     transition: color .2s, background .2s, border-color .2s;
   }
   .like svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .2s; }
+  .like-count { font: 600 12px/1 "Figtree", system-ui, sans-serif; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .like-count:empty { display: none; }
   .like:hover { color: var(--ink); border-color: var(--sky); }
   .like[aria-pressed="true"] { color: var(--ink); background: var(--mist); border-color: var(--lagoon); }
   .like[aria-pressed="true"] svg { fill: var(--lagoon); stroke: var(--lagoon); transform: scale(1.1); }
@@ -367,6 +369,7 @@
         </div>
         <button type="button" class="like" data-like="${v.id}" aria-pressed="${isLiked(v.id)}">
           ${HEART}<span>${isLiked(v.id) ? "Aimée" : "J'aime"}</span>
+          <small class="like-count">${likeCounts[v.id] ? nf.format(likeCounts[v.id]) : ""}</small>
         </button>
       </article>`;
   const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.6-9.2C1 8.2 2.9 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.7 0 5.6 3.7 4.2 6.8-2.1 4.6-9.6 9.2-9.6 9.2z"/></svg>';
@@ -413,6 +416,35 @@
         date: isNaN(v.date) ? "" : v.date.toISOString(), at: Date.now() }, ...liked];
     }
     try { localStorage.setItem(LIKES_KEY, JSON.stringify(liked)); } catch {}
+  }
+
+  // Compteur partagé entre tous les visiteurs (base Supabase). La clé
+  // publique ne permet que de lire les compteurs et d'ajouter/retirer 1.
+  const SUPABASE_URL = "https://begkwwqvigvckrzyjsbm.supabase.co/rest/v1";
+  const SUPABASE_KEY = "sb_publishable_h8ARqgk9qPDxwX9O6wNpGg_Q036-NIF";
+  const supaHeaders = { apikey: SUPABASE_KEY, "Content-Type": "application/json" };
+  let likeCounts = {};
+
+  async function loadLikeCounts() {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/likes?select=video_id,count&count=gt.0`, { headers: supaHeaders });
+      if (!r.ok) return;
+      likeCounts = Object.fromEntries((await r.json()).map(x => [x.video_id, x.count]));
+      document.querySelectorAll("button[data-like]").forEach(b => showCount(b.dataset.like));
+    } catch {}
+  }
+  async function sendLike(id, delta) {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rpc/like_video`, {
+        method: "POST", headers: supaHeaders, body: JSON.stringify({ vid: id, delta }),
+      });
+      if (r.ok) { likeCounts[id] = await r.json(); showCount(id); }
+    } catch {}
+  }
+  function showCount(id) {
+    const n = likeCounts[id];
+    document.querySelectorAll(`button[data-like="${id}"] .like-count`)
+      .forEach(el => { el.textContent = n ? nf.format(n) : ""; });
   }
 
   // Liste des langues présentes, de la plus fréquente à la plus rare
@@ -532,6 +564,10 @@
       });
       const counter = document.querySelector(".chip-likes small");
       if (counter) counter.textContent = liked.length;
+      // Affichage immédiat, puis valeur exacte renvoyée par Supabase
+      likeCounts[id] = Math.max((likeCounts[id] || 0) + (on ? 1 : -1), 0);
+      showCount(id);
+      sendLike(id, on ? 1 : -1);
       return;
     }
     if (e.target.closest("[data-action='clear-history']")) {
@@ -590,6 +626,7 @@
       .filter(v => v.id);
     fillLangSelect();
     render();
+    loadLikeCounts();
   }
 
   // Charge le CSV publié à côté de la page (mis à jour chaque jour)
