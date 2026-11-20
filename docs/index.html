@@ -91,7 +91,14 @@
   }
   .tools input { flex: 1 1 260px; max-width: 380px; }
   .tools input:focus-visible, .tools select:focus-visible { border-color: var(--lagoon); box-shadow: 0 0 0 3px var(--mist); }
-  .yt-connect[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); }
+  .yt-connect {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #3B7CC4; border-color: #3B7CC4; color: #FFFFFF;
+    font-weight: 600; padding: 10px 16px;
+  }
+  .yt-connect svg { width: 16px; height: 16px; fill: currentColor; }
+  .yt-connect:hover { background: #2F6AAE; border-color: #2F6AAE; }
+  .yt-connect[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); color: var(--ink); }
   .toast {
     position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 10;
     transform: translateX(-50%);
@@ -472,7 +479,7 @@
   function setYtButton() {
     const btn = document.getElementById("yt-connect");
     btn.setAttribute("aria-pressed", ytWanted);
-    btn.textContent = ytWanted ? "YouTube connecté ✓" : "Connecter mon YouTube";
+    btn.innerHTML = `${PLAY}<span>${ytWanted ? "YouTube connecté ✓" : "Connecter mon YouTube"}</span>`;
   }
   // Doit être appelé pendant un clic : Google ouvre alors sa fenêtre de connexion
   function getYtToken() {
@@ -491,7 +498,9 @@
     });
     return new Promise((resolve, reject) => {
       pendingToken = { resolve, reject };
-      tokenClient.requestAccessToken({ prompt: ytToken ? "" : undefined });
+      // Première fois : écran de consentement par défaut ; ensuite, sans redemander
+      if (ytToken) tokenClient.requestAccessToken({ prompt: "" });
+      else tokenClient.requestAccessToken();
     });
   }
   async function rateOnYouTube(id, rating) {
