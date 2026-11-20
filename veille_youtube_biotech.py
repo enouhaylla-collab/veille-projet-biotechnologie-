@@ -21,31 +21,59 @@ import pandas as pd
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# (mot-clé, langue de recherche, pages de 50 résultats)
+# La langue indique à YouTube quelles vidéos privilégier (relevanceLanguage).
 MOTS_CLES = [
     # Français
-    "biotechnologie halieutique",
-    "aquaculture innovation",
-    "micro-algues pêche",
-    "biotechnologie marine",
-    "micro-algues",
-    "culture d'algues",
-    "pisciculture durable",
-    "économie bleue",
-    "recherche halieutique",
+    ("biotechnologie halieutique", "fr", 2),
+    ("aquaculture innovation", "fr", 2),
+    ("micro-algues pêche", "fr", 2),
+    ("biotechnologie marine", "fr", 2),
+    ("micro-algues", "fr", 2),
+    ("culture d'algues", "fr", 2),
+    ("pisciculture durable", "fr", 2),
+    ("économie bleue", "fr", 2),
+    ("recherche halieutique", "fr", 2),
     # Anglais
-    "marine biotechnology",
-    "aquaculture technology",
-    "microalgae",
-    "seaweed farming",
-    "cell-cultured seafood",
-    "blue biotechnology",
-    "sustainable aquaculture",
+    ("marine biotechnology", "en", 2),
+    ("aquaculture technology", "en", 2),
+    ("microalgae", "en", 2),
+    ("seaweed farming", "en", 2),
+    ("cell-cultured seafood", "en", 2),
+    ("blue biotechnology", "en", 2),
+    ("sustainable aquaculture", "en", 2),
+    # Espagnol
+    ("biotecnología marina", "es", 1),
+    ("acuicultura innovación", "es", 1),
+    ("microalgas", "es", 1),
+    # Portugais
+    ("biotecnologia marinha", "pt", 1),
+    ("aquicultura inovação", "pt", 1),
+    ("cultivo de algas", "pt", 1),
+    # Allemand
+    ("Meeresbiotechnologie", "de", 1),
+    ("Aquakultur Innovation", "de", 1),
+    ("Mikroalgen", "de", 1),
+    # Italien
+    ("biotecnologie marine", "it", 1),
+    ("acquacoltura innovazione", "it", 1),
+    ("microalghe", "it", 1),
+    # Arabe : biotechnologie marine, aquaculture, micro-algues
+    ("التكنولوجيا الحيوية البحرية", "ar", 1),
+    ("الاستزراع السمكي", "ar", 1),
+    ("الطحالب الدقيقة", "ar", 1),
+    # Japonais : biotechnologie marine, aquaculture à terre, micro-algues
+    ("海洋バイオテクノロジー", "ja", 1),
+    ("陸上養殖", "ja", 1),
+    ("微細藻類", "ja", 1),
+    # Chinois : biotechnologie marine, technologie aquacole, micro-algues
+    ("海洋生物技术", "zh-Hans", 1),
+    ("水产养殖技术", "zh-Hans", 1),
+    ("微藻", "zh-Hans", 1),
 ]
 MAX_RESULTATS = 50  # maximum autorisé par requête search.list
-# Pages de 50 résultats par mot-clé. Quota : 16 mots-clés x 2 pages x 100
-# unités = 3 200 unités par exécution, sur 10 000 gratuites par jour.
-PAGES_PAR_MOT_CLE = 2
-DUREE_MIN_SECONDES = 60  # écarte les Shorts, peu adaptés au site
+# Quota : chaque page de recherche coûte 100 unités. Ici 16 x 2 + 21 x 1
+# = 53 pages, soit environ 5 300 unités par exécution, sur 10 000 par jour.DUREE_MIN_SECONDES = 60  # écarte les Shorts, peu adaptés au site
 # Le CSV vit dans docs/ : le site GitHub Pages le lit directement.
 FICHIER_SORTIE = os.path.join("docs", "veille_biotech.csv")
 
@@ -59,7 +87,7 @@ def get_youtube_client():
     return build("youtube", "v3", developerKey=api_key)
 
 
-def rechercher_videos(youtube, mot_cle, pages=PAGES_PAR_MOT_CLE):
+def rechercher_videos(youtube, mot_cle, langue, pages):
     """Retourne les IDs des vidéos les plus récentes pour un mot-clé."""
     ids, page_token = [], None
     for _ in range(pages):
@@ -70,6 +98,7 @@ def rechercher_videos(youtube, mot_cle, pages=PAGES_PAR_MOT_CLE):
                 part="id",
                 type="video",
                 order="date",
+                relevanceLanguage=langue,
                 maxResults=MAX_RESULTATS,
                 pageToken=page_token,
             )
@@ -109,10 +138,10 @@ def main():
     youtube = get_youtube_client()
     lignes = []
 
-    for mot_cle in MOTS_CLES:
+    for mot_cle, langue, pages in MOTS_CLES:
         print(f"Recherche : « {mot_cle} »...")
         try:
-            ids = rechercher_videos(youtube, mot_cle)
+            ids = rechercher_videos(youtube, mot_cle, langue, pages)
             videos = recuperer_details(youtube, ids)
         except HttpError as e:
             print(f"  Erreur API pour « {mot_cle} » : {e}")

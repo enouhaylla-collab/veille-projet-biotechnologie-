@@ -370,19 +370,34 @@
 
   // Classement par mots-clés, testé d'abord sur le titre puis sur la
   // description. L'ordre compte : la première catégorie trouvée l'emporte.
+  // Deuxième motif : mots en arabe, japonais et chinois, testés sur le texte
+  // brut (ces écritures n'ont pas de « mots » séparés par des espaces).
   const CATEGORIES = [
-    ["Algues & micro-algues", /\b(micro-?algue|algue|alga|seaweed|spiruline|spirulina|phytoplancton|varech|kelp)/],
-    ["Biotechnologie & recherche", /\b(biotech|cellul|cell[- ]cultur|cultured|laborat|biopsie|genetique|genom|biomarqu|bioplastique|biomasse|bioecono|recherche|research|scienti|science)/],
-    ["Startups & innovation", /\b(startup|start-up|accelerat|incubat|entrepreneur|investiss|investor)/],
-    ["Formation & carrières", /\b(formation|module|course|cours|carriere|career|etudiant|student|licence|universit|conference|webinai?re?|webinar|ingenieur)/],
-    ["Aquaculture & élevage", /\b(aquacult|piscicult|elevage|farm|tilapia|crevette|shrimp|saumon|salmon|coquillage|huitre|ostrei|mytili)/],
-    ["Pêche & économie bleue", /\b(peche|fisher|fishing|halieut|economie bleue|blue economy|ocean|maritime|mer\b|marin)/],
+    ["Algues & micro-algues",
+      /\b(micro-?algue|algue|alga|alghe|algen|microalg|mikroalgen|seaweed|spirulin|phytoplancton|varech|kelp)/,
+      /藻|海苔|ノリ|昆布|紫菜|طحالب|الطحالب/],
+    ["Biotechnologie & recherche",
+      /\b(biotech|biotecnolog|cellul|cell[- ]cultur|cultured|laborat|biopsie|genetique|genetic|genom|biomarqu|bioplastique|biomasse|bioecono|recherche|research|investigac|pesquisa|ricerca|forschung|scienti|science|ciencia)/,
+      /バイオ|研究|生物技术|生物科技|科研|تكنولوجيا حيوية|التكنولوجيا الحيوية|بحث|أبحاث/],
+    ["Startups & innovation",
+      /\b(startup|start-up|accelerat|aceler|incubat|entrepreneur|emprend|empreend|imprendit|grunder|investiss|investor|inversion)/,
+      /スタートアップ|起業|创业|初创|ريادة|شركة ناشئة/],
+    ["Formation & carrières",
+      /\b(formation|formacion|formacao|formazione|ausbildung|module|course|curso|corso|cours|carriere|career|etudiant|student|estudiant|licence|universit|conference|webinai?re?|webinar|ingenieur)/,
+      /大学|教育|講座|培训|课程|تدريب|جامعة|دورة/],
+    ["Aquaculture & élevage",
+      /\b(aquacult|acuicult|aquicult|acquacolt|aquakult|piscicult|piscicolt|fischzucht|elevage|farm|tilapia|crevette|camaron|camarao|gamber|shrimp|saumon|salmon|salmao|coquillage|huitre|ostrei|mytili)/,
+      /養殖|养殖|استزراع|الاستزراع|مزرعة|مزارع/],
+    ["Pêche & économie bleue",
+      /\b(peche|pesca|fischerei|fisher|fishing|halieut|economie bleue|economia azul|blue economy|ocean|maritime|maritim|mer\b|meer|marin)/,
+      /漁業|漁|渔业|渔|海洋|صيد|بحر|البحر|الأسماك/],
   ];
   const AUTRES = "Autres sujets";
   const norm = s => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   function categorize(title, description) {
-    for (const text of [norm(title), norm(description)]) {
-      const hit = CATEGORIES.find(([, re]) => re.test(text));
+    for (const raw of [title, description]) {
+      const text = norm(raw);
+      const hit = CATEGORIES.find(([, latin, other]) => latin.test(text) || other.test(raw));
       if (hit) return hit[0];
     }
     return AUTRES;
