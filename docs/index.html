@@ -108,14 +108,14 @@
   }
   .tools input { flex: 1 1 260px; max-width: 380px; }
   .tools input:focus-visible, .tools select:focus-visible { border-color: var(--lagoon); box-shadow: 0 0 0 3px var(--mist); }
-  .yt-connect {
+  .chip.yt-connect {
     display: inline-flex; align-items: center; gap: 8px;
     background: #3B7CC4; border-color: #3B7CC4; color: #FFFFFF;
     font-weight: 600; padding: 10px 16px;
   }
-  .yt-connect svg { width: 16px; height: 16px; fill: currentColor; }
-  .yt-connect:hover { background: #2F6AAE; border-color: #2F6AAE; }
-  .yt-connect[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); color: var(--ink); }
+  .chip.yt-connect svg { width: 16px; height: 16px; fill: currentColor; }
+  .chip.yt-connect:hover { background: #2F6AAE; border-color: #2F6AAE; }
+  .chip.yt-connect[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); color: var(--ink); }
   .toast {
     position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 10;
     transform: translateX(-50%);
