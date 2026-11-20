@@ -163,7 +163,22 @@
 
   #content { display: grid; gap: 56px; }
   .chip.more { display: block; margin: 24px auto 0; padding: 10px 20px; }
-  .chip-history { border-style: dashed; }
+  .like {
+    justify-self: start;
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 500 13px/1 "Figtree", system-ui, sans-serif;
+    color: var(--muted); background: transparent;
+    border: 1px solid var(--mist); border-radius: 999px;
+    padding: 6px 12px 6px 10px; cursor: pointer;
+    transition: color .2s, background .2s, border-color .2s;
+  }
+  .like svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; transition: transform .2s; }
+  .like:hover { color: var(--ink); border-color: var(--sky); }
+  .like[aria-pressed="true"] { color: var(--ink); background: var(--mist); border-color: var(--lagoon); }
+  .like[aria-pressed="true"] svg { fill: var(--lagoon); stroke: var(--lagoon); transform: scale(1.1); }
+  .like:focus-visible { outline: 3px solid var(--lagoon); outline-offset: 2px; }
+  .chip-history, .chip-likes { border-style: dashed; }
+  .chip-likes[aria-pressed="true"] { border-style: solid; }
   .chip-history[aria-pressed="true"] { border-style: solid; }
   .seen {
     position: absolute; top: 10px; left: 10px; z-index: 1;
@@ -403,7 +418,11 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
             : `<span>${nf.format(v.views)} vues</span>
           <span>${isNaN(v.date) ? "" : df.format(v.date)}</span>`}
         </div>
+        <button type="button" class="like" data-like="${v.id}" aria-pressed="${isLiked(v.id)}">
+          ${HEART}<span>${isLiked(v.id) ? "Aimée" : "J'aime"}</span>
+        </button>
       </article>`;
+  const HEART = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.6-9.2C1 8.2 2.9 4.5 6.6 4.5c2.1 0 3.6 1.2 5.4 3.2 1.8-2 3.3-3.2 5.4-3.2 3.7 0 5.6 3.7 4.2 6.8-2.1 4.6-9.6 9.2-9.6 9.2z"/></svg>';
 
   const plural = n => `${n} vidéo${n > 1 ? "s" : ""}`;
 
@@ -426,10 +445,27 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
     watched = [entry, ...watched.filter(w => w.id !== v.id)].slice(0, HISTORY_MAX);
     saveHistory();
   }
-  function historyList(term) {
-    return watched
+  // Retrouve les vidéos d'une liste enregistrée (historique ou J'aime)
+  function resolveSaved(entries, term) {
+    return entries
       .map(w => ({ ...(videos.find(v => v.id === w.id) || { ...w, date: new Date(w.date), lang: detectLang(w.title, "") }), at: w.at }))
       .filter(v => !term || norm(v.title + " " + v.channel).includes(term));
+  }
+  const historyList = term => resolveSaved(watched, term);
+
+  // Vidéos aimées, gardées dans ce navigateur (la plus récente en premier)
+  const LIKES_KEY = "likedVideos";
+  let liked = [];
+  try { liked = JSON.parse(localStorage.getItem(LIKES_KEY)) || []; } catch {}
+  const isLiked = id => liked.some(w => w.id === id);
+  function toggleLike(v) {
+    if (isLiked(v.id)) {
+      liked = liked.filter(w => w.id !== v.id);
+    } else {
+      liked = [{ id: v.id, title: v.title, channel: v.channel, views: v.views,
+        date: isNaN(v.date) ? "" : v.date.toISOString(), at: Date.now() }, ...liked];
+    }
+    try { localStorage.setItem(LIKES_KEY, JSON.stringify(liked)); } catch {}
   }
 
   // Liste des langues présentes, de la plus fréquente à la plus rare
@@ -460,12 +496,26 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
     const chip = (key, label, n) =>
       `<button type="button" class="chip" data-cat="${esc(key)}" aria-pressed="${activeCat === key}">${esc(label)}<small>${n}</small></button>`;
     const history = historyList(term).filter(v => lang === "all" || v.lang === lang);
+    const likes = resolveSaved(liked, term).filter(v => lang === "all" || v.lang === lang);
     document.getElementById("chips").innerHTML =
       chip("all", "Toutes", matching.length) +
       ORDER.filter(c => counts[c]).map(c => chip(c, c, counts[c])).join("") +
-      `<button type="button" class="chip chip-history" data-cat="history" aria-pressed="${activeCat === "history"}">Historique<small>${history.length}</small></button>`;
+      `<button type="button" class="chip chip-history" data-cat="history" aria-pressed="${activeCat === "history"}">Historique<small>${history.length}</small></button>` +
+      `<button type="button" class="chip chip-likes" data-cat="likes" aria-pressed="${activeCat === "likes"}">J'aime<small>${likes.length}</small></button>`;
 
     const content = document.getElementById("content");
+
+    if (activeCat === "likes") {
+      document.getElementById("count").textContent = plural(likes.length);
+      content.innerHTML = `
+      <section>
+        <div class="section-head"><h2>Mes vidéos aimées</h2><span>${plural(likes.length)}</span></div>
+        ${likes.length
+          ? `<div class="grid">${likes.map(v => card(v)).join("")}</div>`
+          : `<p class="empty">${term ? `Aucune vidéo aimée ne correspond à « ${esc(term)} ».` : "Cliquez sur « J'aime » sous une vidéo pour la retrouver ici."}</p>`}
+      </section>`;
+      return;
+    }
 
     if (activeCat === "history") {
       document.getElementById("count").textContent = plural(history.length);
@@ -519,6 +569,22 @@ How Millions of Tilapia Are Farmed &amp; Processed in Giant Chinese Factories �
       activeCat = moreBtn.dataset.cat;
       render();
       document.getElementById("chips").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const likeBtn = e.target.closest("button[data-like]");
+    if (likeBtn) {
+      // Mise à jour sur place : une vidéo en cours de lecture continue
+      const id = likeBtn.dataset.like;
+      const v = videos.find(x => x.id === id) || resolveSaved(liked, "").find(x => x.id === id);
+      if (!v) return;
+      toggleLike(v);
+      const on = isLiked(id);
+      document.querySelectorAll(`button[data-like="${id}"]`).forEach(b => {
+        b.setAttribute("aria-pressed", on);
+        b.querySelector("span").textContent = on ? "Aimée" : "J'aime";
+      });
+      const counter = document.querySelector(".chip-likes small");
+      if (counter) counter.textContent = liked.length;
       return;
     }
     if (e.target.closest("[data-action='clear-history']")) {
