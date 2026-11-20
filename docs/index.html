@@ -91,7 +91,9 @@
   }
   .logo span { padding: .1em .28em .14em; }
   .logo .bio { background: #FFFFFF; color: var(--logo-blue); }
-  .logo .tube { background: var(--logo-blue); color: #FFFFFF; }
+  .logo .tube { background: var(--logo-blue); color: #FFFFFF; flex: 1; }
+  /* Dans la colonne de gauche, le logo garde sa taille naturelle et le fond bleu comble tout espace restant */
+  .logo { background: var(--logo-blue); align-self: flex-start; }
 
   .tools {
     display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
