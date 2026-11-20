@@ -18,6 +18,7 @@
     --ink: #1D3A5C;
     --muted: #5F7C9B;
     --shadow: 0 1px 2px rgba(29, 58, 92, .06), 0 8px 24px -12px rgba(29, 58, 92, .18);
+    --veil: 238, 245, 251;
     color-scheme: light;
   }
   @media (prefers-color-scheme: dark) {
@@ -30,6 +31,7 @@
       --ink: #E3EEF8;
       --muted: #97B0CA;
       --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+      --veil: 14, 26, 40;
       color-scheme: dark;
     }
   }
@@ -42,20 +44,35 @@
     --ink: #E3EEF8;
     --muted: #97B0CA;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -12px rgba(0, 0, 0, .5);
+    --veil: 14, 26, 40;
     color-scheme: dark;
   }
 
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    background:
-      radial-gradient(1200px 500px at 85% -10%, var(--mist), transparent 70%),
-      var(--ground);
+    background: var(--ground);
     color: var(--ink);
     font: 400 15px/1.5 "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
     padding: 0 16px;
     min-height: 100vh;
   }
+  /* Fond : photo de mer fixe, sous un voile qui s'épaissit vers le bas
+     pour garder les titres et les cartes lisibles.
+     Photo : Maksim Shutov, Unsplash (licence Unsplash). */
+  body::before {
+    content: ""; position: fixed; inset: 0; z-index: -1;
+    background:
+      linear-gradient(180deg,
+        rgba(var(--veil), .30) 0%,
+        rgba(var(--veil), .62) 28%,
+        rgba(var(--veil), .84) 55%,
+        rgba(var(--veil), .90) 100%),
+      url("https://images.unsplash.com/photo-1598183907939-983e4a0cc745?auto=format&fit=crop&w=2000&q=70") center 35% / cover no-repeat,
+      var(--ground);
+  }
+  .card h3, .section-head h2 { text-shadow: 0 1px 0 rgba(var(--veil), .6); }
+  .photo-credit a { color: inherit; }
   .wrap { max-width: 1180px; margin: 0 auto; padding-block: 56px 72px; }
 
   header { display: grid; gap: 14px; margin-bottom: 36px; }
@@ -271,7 +288,7 @@
   <main id="content"></main>
 
   <div class="toast" id="toast" role="status" hidden></div>
-  <footer>Données : YouTube Data API v3 — mise à jour chaque matin via GitHub Actions<span id="updated"></span>.</footer>
+  <footer>Données : YouTube Data API v3 — mise à jour chaque matin via GitHub Actions<span id="updated"></span>. <span class="photo-credit">Photo de fond : <a href="https://unsplash.com/fr/@maksimshutov" target="_blank" rel="noopener">Maksim Shutov</a> / <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>.</span></footer>
 </div>
 
 <script>
