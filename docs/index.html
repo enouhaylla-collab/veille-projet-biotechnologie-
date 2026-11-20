@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BioTube</title>
+<script src="https://accounts.google.com/gsi/client" async></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;800&display=swap">
@@ -90,6 +91,16 @@
   }
   .tools input { flex: 1 1 260px; max-width: 380px; }
   .tools input:focus-visible, .tools select:focus-visible { border-color: var(--lagoon); box-shadow: 0 0 0 3px var(--mist); }
+  .yt-connect[aria-pressed="true"] { background: var(--mist); border-color: var(--lagoon); }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); z-index: 10;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    font: 500 14px/1.4 "Figtree", system-ui, sans-serif;
+    color: var(--surface); background: var(--ink);
+    border-radius: 999px; padding: 10px 18px;
+    box-shadow: var(--shadow);
+  }
   .toggle {
     display: inline-flex; align-items: center; gap: 8px;
     font-size: 13px; color: var(--muted); cursor: pointer;
@@ -240,6 +251,7 @@
         <option value="date">Plus récentes</option>
         <option value="views">Plus vues</option>
       </select>
+      <button type="button" class="chip yt-connect" id="yt-connect" aria-pressed="false">Connecter mon YouTube</button>
       <label class="toggle" for="history" title="Être connecté·e à YouTube dans ce navigateur">
         <input id="history" type="checkbox">
         <span>Ajouter à mon historique YouTube</span>
@@ -251,6 +263,7 @@
 
   <main id="content"></main>
 
+  <div class="toast" id="toast" role="status" hidden></div>
   <footer>Données : YouTube Data API v3 — mise à jour chaque matin via GitHub Actions<span id="updated"></span>.</footer>
 </div>
 
@@ -441,6 +454,55 @@
       if (r.ok) { likeCounts[id] = await r.json(); showCount(id); }
     } catch {}
   }
+  // J'aime envoyés sur le compte YouTube de la personne connectée (OAuth
+  // Google). Le site ne reçoit qu'un jeton temporaire, jamais le mot de passe.
+  const GOOGLE_CLIENT_ID = "87563885145-ittc4s0n5ijqrv2kr0j8f8s42h1g2uns.apps.googleusercontent.com";
+  const YT_SCOPE = "https://www.googleapis.com/auth/youtube.force-ssl";
+  let ytToken = null, ytTokenExpires = 0, tokenClient = null, pendingToken = null;
+  let ytWanted = false;
+  try { ytWanted = localStorage.getItem("ytConnect") === "1"; } catch {}
+
+  function toast(message) {
+    const el = document.getElementById("toast");
+    el.textContent = message;
+    el.hidden = false;
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => { el.hidden = true; }, 3500);
+  }
+  function setYtButton() {
+    const btn = document.getElementById("yt-connect");
+    btn.setAttribute("aria-pressed", ytWanted);
+    btn.textContent = ytWanted ? "YouTube connecté ✓" : "Connecter mon YouTube";
+  }
+  // Doit être appelé pendant un clic : Google ouvre alors sa fenêtre de connexion
+  function getYtToken() {
+    if (ytToken && Date.now() < ytTokenExpires) return Promise.resolve(ytToken);
+    if (!window.google?.accounts?.oauth2) return Promise.reject(new Error("Connexion Google indisponible, réessayez."));
+    tokenClient ??= google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: YT_SCOPE,
+      callback: resp => {
+        if (resp.error) return pendingToken?.reject(new Error("Connexion YouTube refusée."));
+        ytToken = resp.access_token;
+        ytTokenExpires = Date.now() + (resp.expires_in - 60) * 1000;
+        pendingToken?.resolve(ytToken);
+      },
+      error_callback: () => pendingToken?.reject(new Error("Fenêtre de connexion fermée.")),
+    });
+    return new Promise((resolve, reject) => {
+      pendingToken = { resolve, reject };
+      tokenClient.requestAccessToken({ prompt: ytToken ? "" : undefined });
+    });
+  }
+  async function rateOnYouTube(id, rating) {
+    const token = await getYtToken();
+    const r = await fetch(`https://www.googleapis.com/youtube/v3/videos/rate?id=${id}&rating=${rating}`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` },
+    });
+    if (r.status === 401) { ytToken = null; throw new Error("Session YouTube expirée, cliquez à nouveau."); }
+    if (!r.ok) throw new Error("YouTube a refusé le J'aime.");
+  }
+
   function showCount(id) {
     const n = likeCounts[id];
     document.querySelectorAll(`button[data-like="${id}"] .like-count`)
@@ -568,6 +630,11 @@
       likeCounts[id] = Math.max((likeCounts[id] || 0) + (on ? 1 : -1), 0);
       showCount(id);
       sendLike(id, on ? 1 : -1);
+      if (ytWanted) {
+        rateOnYouTube(id, on ? "like" : "none")
+          .then(() => toast(on ? "J'aime ajouté sur YouTube" : "J'aime retiré de YouTube"))
+          .catch(err => toast(err.message));
+      }
       return;
     }
     if (e.target.closest("[data-action='clear-history']")) {
@@ -605,6 +672,28 @@
   try { historyBox.checked = localStorage.getItem("ytHistory") === "1"; } catch {}
   historyBox.addEventListener("change", () => {
     try { localStorage.setItem("ytHistory", historyBox.checked ? "1" : "0"); } catch {}
+  });
+
+  setYtButton();
+  document.getElementById("yt-connect").addEventListener("click", () => {
+    if (ytWanted) {
+      // Déconnexion : on révoque le jeton côté Google
+      if (ytToken) google.accounts.oauth2.revoke(ytToken, () => {});
+      ytToken = null;
+      ytWanted = false;
+      try { localStorage.setItem("ytConnect", "0"); } catch {}
+      setYtButton();
+      toast("YouTube déconnecté");
+      return;
+    }
+    getYtToken()
+      .then(() => {
+        ytWanted = true;
+        try { localStorage.setItem("ytConnect", "1"); } catch {}
+        setYtButton();
+        toast("YouTube connecté : vos J'aime seront aussi envoyés sur YouTube");
+      })
+      .catch(err => toast(err.message));
   });
 
   document.getElementById("q").addEventListener("input", render);
